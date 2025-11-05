@@ -1,0 +1,14 @@
+# Ignore the virtual environment
+venv/
+__pycache__/
+
+# Ignore environment secrets
+.env
+
+# IDE
+.vscode/
+.idea/
+
+# Git
+.git/
+.gitignore

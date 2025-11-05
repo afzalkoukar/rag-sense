@@ -1,0 +1,8 @@
+fastapi
+uvicorn[standard]
+supabase
+google-generativeai
+python-dotenv
+PyMuPDF
+sentence-transformers
+python-multipart
