@@ -6,4 +6,4 @@ docker rm rag-app
 docker build -t rag-backend .
 
 # 3. Run the new, fixed image
-docker run -d -p 8000:8000 --env-file .env --name rag-app rag-backend
+docker run -d --network host --env-file .env -v .:/app --name rag-app rag-backend

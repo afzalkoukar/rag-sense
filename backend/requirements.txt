@@ -6,3 +6,5 @@ python-dotenv
 PyMuPDF
 sentence-transformers
 python-multipart
+asyncpg
+sqlalchemy[asyncio]

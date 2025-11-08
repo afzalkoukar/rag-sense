@@ -34,7 +34,7 @@ app = FastAPI()
 @app.get("/")
 async def root():
     """A simple root endpoint to check if the server is running."""
-    return {"message": "BookQ Backend is running!"}
+    return {"message": "BookQ Backend is running! something"}
 
 @app.post("/api/upload", response_model=UploadResponse)
 async def upload_book(file: UploadFile = File(...)):
