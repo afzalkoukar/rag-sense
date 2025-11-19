@@ -1,0 +1,11 @@
+fastapi
+uvicorn[standard]
+supabase
+google-generativeai
+python-dotenv
+PyMuPDF
+sentence-transformers
+python-multipart
+asyncpg>=0.27
+sqlalchemy[asyncio]
+numpy  # Add this for cosine similarity
