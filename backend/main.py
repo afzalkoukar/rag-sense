@@ -78,7 +78,7 @@ engine: AsyncEngine = create_async_engine(
 
 embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
 genai.configure(api_key=GEMINI_API_KEY)
-gemini_model = genai.GenerativeModel('gemini-pro')
+gemini_model = genai.GenerativeModel('gemini-2.5-flash')
 
 
 # =============================================================================
@@ -167,6 +167,7 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> List[str]
 async def process_book_background(upload_id: str, file_name: str, pdf_bytes: bytes):
     try:
         print(f"[{upload_id}] Extracting text from PDF...")
+        # 1. Heavy Lifting (CPU) - Done in thread
         pages = await asyncio.to_thread(extract_text_from_pdf, pdf_bytes)
         
         all_chunks = []
@@ -174,6 +175,7 @@ async def process_book_background(upload_id: str, file_name: str, pdf_bytes: byt
             text_chunks = chunk_text(page_text)
             
             for chunk_idx, chunk_content in enumerate(text_chunks):
+                # 2. Embeddings (Network/CPU) - Done in thread
                 embedding_resp = await asyncio.to_thread(embedding_model.encode, chunk_content)
                 embedding = embedding_resp.tolist()
                 
@@ -186,13 +188,14 @@ async def process_book_background(upload_id: str, file_name: str, pdf_bytes: byt
                     'created_at': datetime.now()
                 })
         
-        print(f"[{upload_id}] Generated {len(all_chunks)} chunks")
+        print(f"[{upload_id}] Generated {len(all_chunks)} chunks. Saving to DB...")
         
+        # FIX: Single Transaction for BOTH operations
+        # This ensures we don't lose the connection between saving chunks and updating status.
         async with engine.begin() as conn:
             if all_chunks:
                 await conn.execute(insert(chunks_table), all_chunks)
-        
-        async with engine.begin() as conn:
+            
             await conn.execute(
                 update(books_table)
                 .where(books_table.c.id == uuid.UUID(upload_id))
@@ -203,12 +206,16 @@ async def process_book_background(upload_id: str, file_name: str, pdf_bytes: byt
         
     except Exception as e:
         print(f"[{upload_id}] Processing failed: {str(e)}")
-        async with engine.begin() as conn:
-            await conn.execute(
-                update(books_table)
-                .where(books_table.c.id == uuid.UUID(upload_id))
-                .values(status='failed')
-            )
+        # Try to update status to failed (New transaction for error handling)
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(
+                    update(books_table)
+                    .where(books_table.c.id == uuid.UUID(upload_id))
+                    .values(status='failed')
+                )
+        except Exception as db_err:
+            print(f"[{upload_id}] Failed to update status to 'failed': {db_err}")
 
 
 # =============================================================================
@@ -227,9 +234,19 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def startup_event():
-    print("Starting up RAG-SENSE backend...")
-    await create_tables()
-    print("Database tables ready")
+    print("--- [STARTUP] 1. Beginning startup sequence ---")
+    try:
+        print(f"--- [STARTUP] 2. Attempting to connect to DB at: {DATABASE_URL.split('@')[1]}") 
+        # (This prints the host safely without password)
+        
+        print("--- [STARTUP] 3. Running create_tables()... (If it hangs here, network is blocked)")
+        await create_tables()
+        
+        print("--- [STARTUP] 4. Database tables verified/created!")
+    except Exception as e:
+        print(f"❌ [STARTUP ERROR]: {str(e)}")
+        raise e
+    print("--- [STARTUP] 5. Ready to accept requests ---")
 
 
 @app.get("/")
@@ -293,6 +310,7 @@ async def get_status(upload_id: str):
 @app.post("/api/ask", response_model=AskResponse)
 async def ask_question(request: AskRequest):
     try:
+        print(f"[{request.upload_id}] Step 1: Finding book...")
         # 1. Check Book
         async with engine.connect() as conn:
             result = await conn.execute(
@@ -304,11 +322,13 @@ async def ask_question(request: AskRequest):
             raise HTTPException(404, "Book not found")
         if book.status != 'completed':
             raise HTTPException(400, f"Book is not ready. Status: {book.status}")
-        
+
+        print(f"[{request.upload_id}] Step 2: Embedding query...")
         # 2. Embed Question
         query_emb_resp = await asyncio.to_thread(embedding_model.encode, request.query)
         query_embedding = query_emb_resp.tolist()
         
+        print(f"[{request.upload_id}] Step 3: Fetching chunks...")
         # 3. Fetch Chunks
         async with engine.connect() as conn:
             result = await conn.execute(
@@ -316,6 +336,11 @@ async def ask_question(request: AskRequest):
             )
             all_chunks = result.fetchall()
         
+        if not all_chunks:
+             print(f"[{request.upload_id}] Warning: No chunks found in DB!")
+             raise HTTPException(500, "Document has no content.")
+
+        print(f"[{request.upload_id}] Step 4: Calculating similarity for {len(all_chunks)} chunks...")
         # 4. Cosine Similarity
         import numpy as np
         def cosine_similarity(a, b):
@@ -330,12 +355,23 @@ async def ask_question(request: AskRequest):
         chunk_scores.sort(reverse=True, key=lambda x: x[0])
         top_chunks = [chunk for score, chunk in chunk_scores[:5]]
         
+        print(f"[{request.upload_id}] Step 5: Calling Google Gemini...")
         # 5. Ask Gemini
         context = "\n\n".join([f"[Page {c.page_number}]: {c.content}" for c in top_chunks])
         prompt = f"Answer based on this context:\n{context}\n\nQuestion: {request.query}\nAnswer:"
         
+        # Print the prompt to logs to ensure it looks right
+        print(f"--- PROMPT START ---\n{prompt[:200]}...\n--- PROMPT END ---")
+
         response = await asyncio.to_thread(gemini_model.generate_content, prompt)
         
+        print(f"[{request.upload_id}] Step 6: Gemini responded!")
+        
+        # Check if response was blocked
+        if not response.parts:
+             print(f"[{request.upload_id}] Gemini blocked response: {response.prompt_feedback}")
+             raise HTTPException(500, "AI declined to answer due to safety filters.")
+
         citations = [
             Citation(page=c.page_number, snippet=c.content[:200] + "...")
             for c in top_chunks
@@ -344,8 +380,8 @@ async def ask_question(request: AskRequest):
         return AskResponse(answer=response.text, citations=citations)
         
     except Exception as e:
-        print(f"Error: {e}")
-        raise HTTPException(500, f"Error: {str(e)}")
+        print(f"ERROR in ask_question: {e}")
+        raise HTTPException(500, f"Error processing request: {str(e)}")
 
 @app.post("/api/clear/{upload_id}")
 async def clear_session(upload_id: str):

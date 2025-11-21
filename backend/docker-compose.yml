@@ -3,12 +3,21 @@ services:
     container_name: rag-app
     build: .
     
-    # Standard bridge mode (safe for all OS/Networks)
+    # Standard bridge mode (Safest for connectivity)
     ports:
       - "8000:8000"
     
     env_file:
       - .env
+    
+    # FIX 1: Force logs to show immediately (No buffering)
+    environment:
+      - PYTHONUNBUFFERED=1
+    
+    # FIX 2: Use Google DNS to ensure we can reach Gemini API
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     
     volumes:
       - .:/app
