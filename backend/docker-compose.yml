@@ -22,4 +22,5 @@ services:
     volumes:
       - .:/app
       
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    # CHANGED: Updated to "app.main:app" to match new folder structure
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
