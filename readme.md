@@ -1,37 +1,64 @@
-# 🧠 Rag Sense
+# DocuMind: Intelligent Document Chat
 
-**Rag Sense** is an intelligent RAG (Retrieval-Augmented Generation) framework designed to help developers quickly build, test, and deploy AI-powered retrieval systems. It provides modular components for document ingestion, embedding, retrieval, and LLM-based reasoning.
-
----
+DocuMind is a full-stack RAG (Retrieval Augmented Generation) application that allows users to upload PDF documents and chat with them using AI. It transforms static documents into interactive conversations.
 
 ## 🚀 Features
 
-- 🔍 Document ingestion and vectorization
-- 🧩 Plug-and-play retriever architecture
-- 🗂️ Support for multiple data sources (PDFs, text, CSVs, etc.)
-- ⚙️ Configurable pipeline with minimal setup
-- 🧠 LLM response orchestration
-- 🧾 Extensible backend ready for experimentation
+* 📄 **PDF Ingestion**: Upload resumes, books, or reports.
+* 🧠 **Smart Embeddings**: Automatically chunks and vectorizes text using `sentence-transformers`.
+* 💬 **AI Chat**: Ask questions and get accurate answers powered by Google Gemini 2.5 Flash.
+* 📚 **Citations**: Every answer includes page numbers and text snippets from the source.
+* ⚡ **Real-time**: Non-blocking upload process with live status updates.
 
----
+## 🏗️ Architecture
 
-## 🛠️ Tech Stack
+* **Frontend**: Next.js 14 (App Router), Tailwind CSS, TypeScript.
+* **Backend**: FastAPI (Python), Docker, SQLAlchemy (Async).
+* **Database**: Supabase (PostgreSQL + pgvector).
+* **AI Models**:
+   * Embeddings: `all-MiniLM-L6-v2` (Local/HuggingFace).
+   * LLM: Google Gemini 2.5 Flash via API.
 
-- **Python 3.10+**
-- **LangChain / LlamaIndex**
-- **FAISS / Chroma** for vector storage
-- **OpenAI / HuggingFace** for LLM integration
-- **FastAPI** 
+## 📂 Project Structure
 
----
+This repository is a monorepo containing both the frontend and backend services.
 
-## ⚙️ Installation
+| Service | Path | Description |
+|---------|------|-------------|
+| Frontend | `/frontend` | Next.js application for the user interface. |
+| Backend | `/backend` | FastAPI server handling storage, embeddings, and RAG logic. |
 
-Clone the repository and install dependencies:
+## 🏁 Quick Start
+
+You need to run both services to use the application fully.
+
+### 1. Start Backend
 
 ```bash
-git clone git@github.com:afzalkoukar/rag-sense.git
-cd rag-sense
-python3 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+cd backend
+# Copy .env.example to .env and add your API keys
+docker compose up --build
+```
+
+Backend runs on: `http://localhost:8000`
+
+### 2. Start Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+Frontend runs on: `http://localhost:3000`
+
+## 🛠️ Requirements
+
+* Docker & Docker Compose
+* Node.js 18+
+* A Supabase Project (Free Tier)
+* Google Gemini API Key
+
+## 📄 License
+
+MIT
