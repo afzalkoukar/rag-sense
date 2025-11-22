@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
+// FIX: Changed to relative imports to avoid alias resolution errors
 import Navbar from '../components/Navbar';
 import FileUpload from '../components/FileUpload';
 import StatusIndicator from '../components/StatusIndicator';
@@ -24,34 +25,27 @@ export default function Home() {
     setStatus('idle');
   };
 
-  // ROBUST SESSION CLEANUP
+  // FIX: Use 'beforeunload' for reliable cleanup on refresh/close
   useEffect(() => {
-    if (!uploadId) return;
-
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-    // 1. Warn user before leaving
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = ''; // Triggers browser's "Are you sure?" dialog
+    const handleBeforeUnload = () => {
+      if (uploadId) {
+        // 1. Get API URL safely
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+        
+        // 2. Prepare data (Beacon sends POST requests)
+        const blob = new Blob([JSON.stringify({})], { type: 'application/json' });
+        
+        // 3. Fire and forget
+        navigator.sendBeacon(`${baseUrl}/api/clear/${uploadId}`, blob);
+      }
     };
 
-    // 2. Actually delete data when page dies
-    const handlePageHide = () => {
-      // "keepalive: true" allows the request to outlive the page
-      fetch(`${baseUrl}/api/clear/${uploadId}`, {
-        method: 'POST',
-        keepalive: true,
-        headers: { 'Content-Type': 'application/json' }
-      });
-    };
-
+    // Attach listener
     window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('pagehide', handlePageHide);
 
+    // Cleanup listener
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handlePageHide);
     };
   }, [uploadId]);
 
