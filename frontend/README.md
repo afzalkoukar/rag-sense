@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# DocuMind Frontend
 
-## Getting Started
+The user interface for DocuMind, built with Next.js 14 (App Router) and styled with Tailwind CSS. It features a modern, responsive design with upload capabilities and a chat interface.
 
-First, run the development server:
+## 🎨 Features
+
+* **Drag & Drop Upload**: Easy file ingestion.
+* **Real-time Status**: Polling for backend processing status.
+* **Chat Interface**: Clean, message-bubble UI with citations.
+* **Session Management**: Automatic cleanup when leaving the page.
+
+## 🛠️ Setup & Installation
+
+### 1. Install Dependencies
+
+```bash
+npm install
+```
+
+### 2. Environment Variables
+
+Create a `.env.local` file in the `frontend` directory:
+
+```env
+# URL of your Backend API (No trailing slash)
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+### 3. Run Development Server
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The app will be available at: **http://localhost:3000**
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 📂 Project Structure
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```
+src/
+├── app/
+│   ├── globals.css      # Global styles
+│   ├── layout.tsx       # Root layout
+│   └── page.tsx         # Main logic (State machine)
+├── components/
+│   ├── ChatInterface.tsx
+│   ├── FileUpload.tsx
+│   ├── MessageBubble.tsx
+│   ├── Navbar.tsx
+│   └── StatusIndicator.tsx
+└── lib/
+    └── api.ts           # API Client
+```
 
-## Learn More
+## 🚀 Deployment
 
-To learn more about Next.js, take a look at the following resources:
+This project is optimized for deployment on Vercel.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+1. Push code to GitHub.
+2. Import project into Vercel.
+3. Add the `NEXT_PUBLIC_API_URL` environment variable (pointing to your hosted backend).
+4. Deploy!
